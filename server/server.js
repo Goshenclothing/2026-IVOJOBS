@@ -19,25 +19,36 @@ const mockUsers = [
   { _id: '2', name: 'Jane Smith', headline: 'Product Designer', company: 'Apple', skills: ['Figma', 'Sketch', 'UI/UX'], avatar: 'https://placehold.co/120x120/0d47a1/ffffff?text=J', createdAt: new Date() }
 ];
 
-// Attach to app locals for routes to access
 app.locals.mockJobs = mockJobs;
 app.locals.mockUsers = mockUsers;
 
-// Security & Middleware
+// Security Middleware
 app.use(helmet({
-  contentSecurityPolicy: false, // Disable for development to allow external scripts/styles if needed
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://www.googletagmanager.com", "https://www.google-analytics.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
+      imgSrc: ["'self'", "data:", "https://placehold.co", "https://www.google-analytics.com"],
+      fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com"],
+      connectSrc: ["'self'", "https://www.google-analytics.com", "https://www.googletagmanager.com"], 
+    },
+  },
+})); 
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(cors());
 
-// Rate Limiting (Simple In-Memory)
+// Rate Limiting
 const rateLimit = new Map();
-const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000;
 const MAX_REQUESTS = 100;
 
 app.use((req, res, next) => {
   const ip = req.ip;
   const now = Date.now();
-  
   if (!rateLimit.has(ip)) {
     rateLimit.set(ip, { count: 1, startTime: now });
   } else {
@@ -55,13 +66,12 @@ app.use((req, res, next) => {
   next();
 });
 
-// Input Sanitization Middleware (Basic)
-app.use(express.json({ limit: '10kb' })); // Limit body size
+// Input Sanitization
+app.use(express.json({ limit: '10kb' }));
 app.use((req, res, next) => {
   if (req.body) {
     for (let key in req.body) {
       if (typeof req.body[key] === 'string') {
-        // Basic sanitization: remove potential script tags
         req.body[key] = req.body[key].replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gm, "")
                                      .replace(/on\w+="[^"]*"/g, ""); 
       }
@@ -70,27 +80,22 @@ app.use((req, res, next) => {
   next();
 });
 
-// Database Connection Fallback
+// Database Connection
 let isUsingMockDB = false;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/ivojobs';
 
 mongoose.connect(MONGO_URI, {
-  serverSelectionTimeoutMS: 5000 // 5 seconds timeout
+  serverSelectionTimeoutMS: 5000
 })
   .then(() => {
     console.log('✅ Connected to MongoDB');
-    isUsingMockDB = false;
     app.set('isUsingMockDB', false);
   })
   .catch(err => {
     console.error('❌ Could not connect to MongoDB:', err.message);
     console.error('Switching to IN-MEMORY MOCK MODE.');
-    isUsingMockDB = true;
     app.set('isUsingMockDB', true);
   });
-
-// Global flag for routes (Initial)
-app.set('isUsingMockDB', isUsingMockDB);
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -107,13 +112,11 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date(), mode: app.get('isUsingMockDB') ? 'memory' : 'mongo' });
 });
 
-// API 404 Handler (Must be before static files to prevent HTML 404s for API)
 app.use('/api/*', (req, res) => {
     res.status(404).json({ message: 'API Endpoint Not Found' });
 });
 
-// Serve Static Files (Frontend)
-app.use(express.static(path.join(__dirname, '../'))); // Serve root files
+app.use(express.static(path.join(__dirname, '../')));
 app.use('/assets', express.static(path.join(__dirname, '../assets')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 

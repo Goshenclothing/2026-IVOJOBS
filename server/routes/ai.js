@@ -2,12 +2,7 @@ const express = require('express');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const router = express.Router();
 
-// Initialize Gemini (if key exists)
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY');
-
-// ---------------------------------------------------------
-// SIMPLIFIED KNOWLEDGE BASE AI (Local)
-// ---------------------------------------------------------
 
 const KNOWLEDGE_BASE = [
     {
@@ -43,45 +38,27 @@ const KNOWLEDGE_BASE = [
 function findBestMatch(query) {
     if (!query) return null;
     const lowerQuery = query.toLowerCase();
-    
     let bestMatch = null;
     let maxScore = 0;
-
     for (const entry of KNOWLEDGE_BASE) {
         let score = 0;
         for (const keyword of entry.keywords) {
-            if (lowerQuery.includes(keyword)) {
-                score += 1;
-            }
+            if (lowerQuery.includes(keyword)) score += 1;
         }
         if (score > maxScore) {
             maxScore = score;
             bestMatch = entry;
         }
     }
-
     return maxScore > 0 ? bestMatch.response : null;
 }
-
-// ---------------------------------------------------------
-// ROUTE
-// ---------------------------------------------------------
 
 router.post('/chat', async (req, res) => {
     try {
         const { message, history } = req.body;
-
-        if (!message) {
-            return res.status(400).json({ message: "Message is required." });
-        }
-
-        // 1. Try Local Knowledge Base First (Fast & Free)
+        if (!message) return res.status(400).json({ message: "Message is required." });
         const localResponse = findBestMatch(message);
-        if (localResponse) {
-            return res.json({ response: localResponse, source: 'local' });
-        }
-
-        // 2. Fallback to Gemini AI (if configured)
+        if (localResponse) return res.json({ response: localResponse, source: 'local' });
         const apiKey = process.env.GEMINI_API_KEY;
         if (apiKey && apiKey !== 'YOUR_GEMINI_API_KEY' && !apiKey.startsWith('your_')) {
             try {
@@ -98,16 +75,12 @@ router.post('/chat', async (req, res) => {
                 return res.json({ response: response.text(), source: 'gemini' });
             } catch (aiError) {
                 console.error("Gemini AI Error:", aiError);
-                // Fall through to default response
             }
         }
-
-        // 3. Default Fallback
         res.json({ 
             response: "I'm not sure about that. I can help you find talent, post jobs, or navigate the site. Try asking 'How do I post a job?' or 'Where can I find workers?'",
             source: 'fallback'
         });
-
     } catch (error) {
         console.error('AI Route Error:', error);
         res.status(500).json({ message: 'The AI assistant is temporarily unavailable.' });

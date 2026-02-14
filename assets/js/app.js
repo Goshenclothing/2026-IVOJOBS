@@ -1,133 +1,61 @@
-// -----------------------------------------------------------------------------
-// CONFIGURATION & STATE
-// -----------------------------------------------------------------------------
 const API_BASE = window.location.hostname.includes("localhost") || window.location.hostname.includes("127.0.0.1")
-  ? "/api" // Use relative path when served from the same origin
-  : "http://localhost:4000/api"; // Fallback for file:// or other setups
+  ? "/api" 
+  : "http://localhost:4000/api";
 
 let token = localStorage.getItem("ivo_token");
-let currentUser = null;
 
-// -----------------------------------------------------------------------------
-// API HELPER
-// -----------------------------------------------------------------------------
 async function api(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
-  const headers = {
-    ...(options.headers || {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {})
-  };
-
-  // If body is NOT FormData, set Content-Type to JSON
-  if (!(options.body instanceof FormData)) {
-    headers['Content-Type'] = 'application/json';
-  }
-
+  const headers = { ...(options.headers || {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+  if (!(options.body instanceof FormData)) headers['Content-Type'] = 'application/json';
   try {
-    const res = await fetch(url, {
-      ...options,
-      headers
-    });
-
-    // Handle 204 No Content
+    const res = await fetch(url, { ...options, headers });
     if (res.status === 204) return null;
-
-    // Check content type to avoid JSON parsing errors on HTML responses (404/500)
     const contentType = res.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
         const data = await res.json();
-        if (!res.ok) {
-            throw new Error(data.message || `API Error: ${res.status}`);
-        }
+        if (!res.ok) throw new Error(data.message || `API Error: ${res.status}`);
         return data;
     } else {
-        if (!res.ok) {
-            // If text response (e.g. 404 HTML)
-            const text = await res.text();
-            console.error("Non-JSON API Error:", text);
-            throw new Error(`API Error: ${res.status} (Invalid Response)`);
-        }
-        return null; // Should not happen for valid API calls
+        if (!res.ok) throw new Error(`API Error: ${res.status}`);
+        return null;
     }
   } catch (error) {
     console.error(`API Call Failed [${endpoint}]:`, error);
-    if (error.message.includes("Failed to fetch")) {
-        throw new Error("Could not connect to server. Please check your internet connection.");
-    }
     throw error;
   }
 }
 
-// -----------------------------------------------------------------------------
-// UI HELPERS
-// -----------------------------------------------------------------------------
 function showNotification(msg, type = "info") {
-  // Use a simple alert for now, or a custom toast if HTML exists
-  // For better UX, let's create a temporary toast element
   const toast = document.createElement('div');
   toast.innerText = msg;
-  toast.style.position = 'fixed';
-  toast.style.bottom = '20px';
-  toast.style.left = '50%';
-  toast.style.transform = 'translateX(-50%)';
-  toast.style.backgroundColor = type === 'error' ? '#d32f2f' : '#333';
-  toast.style.color = '#fff';
-  toast.style.padding = '12px 24px';
-  toast.style.borderRadius = '8px';
-  toast.style.zIndex = '10000';
-  toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
-  toast.style.transition = 'opacity 0.5s';
-  
+  toast.style.cssText = "position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px 24px;border-radius:8px;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:opacity 0.5s;";
+  if (type === 'error') toast.style.backgroundColor = '#d32f2f';
   document.body.appendChild(toast);
-  
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    setTimeout(() => toast.remove(), 500);
-  }, 3000);
+  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000);
 }
 
-function openModal(id) {
-  const modal = document.getElementById(id);
-  if (modal) modal.style.display = 'flex';
-}
+function openModal(id) { const m = document.getElementById(id); if(m) m.style.display = 'flex'; }
+function closeModal(id) { const m = document.getElementById(id); if(m) m.style.display = 'none'; }
+function smoothScroll(t) { document.querySelector(t).scrollIntoView({ behavior: 'smooth' }); }
 
-function closeModal(id) {
-  const modal = document.getElementById(id);
-  if (modal) modal.style.display = 'none';
-}
-
-function smoothScroll(target) {
-  document.querySelector(target).scrollIntoView({ behavior: 'smooth' });
-}
-
-// -----------------------------------------------------------------------------
-// AUTHENTICATION
-// -----------------------------------------------------------------------------
 async function handleLogin() {
   const email = document.getElementById('login-email').value;
   const password = document.getElementById('login-password').value;
-  if (!email || !password) {
-    showNotification("Please enter email and password.", "error");
-    return;
-  }
+  if (!email || !password) return showNotification("Please enter email and password.", "error");
   await login(email, password);
 }
 
 async function login(email, password) {
   try {
-    const data = await api('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password })
-    });
+    const data = await api('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
     token = data.token;
     localStorage.setItem("ivo_token", token);
     localStorage.setItem("ivo_userId", data.userId);
     closeModal('login-modal');
     checkAuth();
     showNotification("Logged in successfully!");
-  } catch (err) {
-    showNotification(err.message, 'error');
-  }
+  } catch (err) { showNotification(err.message, 'error'); }
 }
 
 async function signup() {
@@ -136,36 +64,20 @@ async function signup() {
   const phone = document.getElementById('signup-number').value;
   const password = document.getElementById('signup-password').value;
   const confirm = document.getElementById('signup-confirm-password').value;
-
-  if (password !== confirm) {
-    showNotification("Passwords do not match.", "error");
-    return;
-  }
-
+  if (password !== confirm) return showNotification("Passwords do not match.", "error");
   try {
-    const data = await api('/auth/signup', {
-      method: 'POST',
-      body: JSON.stringify({ name, email, phone, password })
-    });
+    const data = await api('/auth/signup', { method: 'POST', body: JSON.stringify({ name, email, phone, password }) });
     token = data.token;
     localStorage.setItem("ivo_token", token);
     localStorage.setItem("ivo_userId", data.userId);
     closeModal('signup-modal');
     checkAuth();
     showNotification("Account created successfully!");
-  } catch (err) {
-    showNotification(err.message, 'error');
-  }
-}
-
-function switchModal(oldId, newId) {
-  closeModal(oldId);
-  openModal(newId);
+  } catch (err) { showNotification(err.message, 'error'); }
 }
 
 function logout() {
   token = null;
-  currentUser = null;
   localStorage.removeItem("ivo_token");
   localStorage.removeItem("ivo_userId");
   checkAuth();
@@ -173,45 +85,30 @@ function logout() {
 }
 
 function checkAuth() {
-  const authControls = document.getElementById('auth-controls');
-  const profileControls = document.getElementById('profile-controls');
-  
-  if (token) {
-    if (authControls) authControls.style.display = 'none';
-    if (profileControls) profileControls.style.display = 'block';
-  } else {
-    if (authControls) authControls.style.display = 'block';
-    if (profileControls) profileControls.style.display = 'none';
-  }
+  const auth = document.getElementById('auth-controls');
+  const prof = document.getElementById('profile-controls');
+  if (token) { if(auth) auth.style.display = 'none'; if(prof) prof.style.display = 'block'; }
+  else { if(auth) auth.style.display = 'block'; if(prof) prof.style.display = 'none'; }
 }
 
-// -----------------------------------------------------------------------------
-// WORKERS / PROFESSIONALS
-// -----------------------------------------------------------------------------
 async function searchWorkers() {
   const input = document.getElementById('search-input');
   const query = input ? input.value : '';
-  
   try {
     const workers = await api(`/profile/professionals?search=${encodeURIComponent(query)}`);
     renderWorkers(workers);
-  } catch (err) {
-    console.error(err);
-    showNotification("Failed to load professionals.", 'error');
-  }
+  } catch (err) { showNotification("Failed to load professionals.", 'error'); }
 }
 
-async function viewProfile(userId) {
+async function viewProfile(id) {
   try {
-    const user = await api(`/profile/${userId}`);
+    const user = await api(`/profile/${id}`);
     document.getElementById('profile-name').innerText = user.name;
     document.getElementById('profile-title').innerText = user.headline || 'Professional';
     document.getElementById('profile-company').innerText = user.company || 'Freelance';
     document.getElementById('profile-skills').innerText = `Skills: ${user.skills ? user.skills.join(', ') : 'N/A'}`;
     openModal('profile-modal');
-  } catch (err) {
-    showNotification("Failed to load profile.", "error");
-  }
+  } catch (err) { showNotification("Failed to load profile.", "error"); }
 }
 
 async function showProfileDashboard() {
@@ -224,65 +121,31 @@ async function showProfileDashboard() {
     document.getElementById('my-profile-contact').innerText = user.email;
     document.getElementById('my-profile-avatar').src = user.avatar || 'https://placehold.co/120x120/0d47a1/ffffff?text=ME';
     document.getElementById('my-profile-about').innerText = user.about || 'Tell us about yourself...';
-    
-    // Pre-fill edit modal
     document.getElementById('edit-name').value = user.name;
     document.getElementById('edit-headline').value = user.headline || '';
     document.getElementById('edit-location').value = user.location || '';
     document.getElementById('edit-contact').value = user.email || '';
     document.getElementById('edit-about').value = user.about || '';
-    
-    // Skills
     const skillsContainer = document.getElementById('my-profile-skills');
     skillsContainer.innerHTML = (user.skills || []).map(s => `<span class="skill-tag">${s}</span>`).join('');
-    
     openModal('my-profile-modal');
-  } catch (err) {
-    showNotification("Failed to load dashboard.", "error");
-  }
-}
-
-function openEditModal() {
-  closeModal('my-profile-modal');
-  openModal('edit-profile-modal');
+  } catch (err) { showNotification("Failed to load dashboard.", "error"); }
 }
 
 async function saveProfileChanges() {
-  const name = document.getElementById('edit-name').value;
-  const headline = document.getElementById('edit-headline').value;
-  const location = document.getElementById('edit-location').value;
-  const contact = document.getElementById('edit-contact').value;
-  const about = document.getElementById('edit-about').value;
-  const avatarFile = document.getElementById('edit-avatar').files[0];
-
-  const formData = new FormData();
-  formData.append('name', name);
-  formData.append('headline', headline);
-  formData.append('location', location);
-  formData.append('contact', contact);
-  formData.append('about', about);
-  if (avatarFile) {
-    formData.append('avatar', avatarFile);
-  }
-
+  const formData = new FormData(document.getElementById('edit-profile-form'));
   try {
-    await api('/profile', {
-      method: 'PATCH',
-      body: formData
-    });
+    await api('/profile', { method: 'PATCH', body: formData });
     showNotification("Profile updated successfully!");
     closeModal('edit-profile-modal');
-    showProfileDashboard(); // Re-open dashboard to see changes
-    searchWorkers(); // Refresh grid
-  } catch (err) {
-    showNotification(err.message, 'error');
-  }
+    showProfileDashboard();
+    searchWorkers();
+  } catch (err) { showNotification(err.message, 'error'); }
 }
 
 function renderWorkers(workers) {
   const grid = document.getElementById('user-grid');
   if (!grid) return;
-  
   grid.innerHTML = workers.map(user => `
     <div class="card" onclick="viewProfile('${user._id}')">
       <div class="card-img" style="background-image: url('${user.avatar || 'https://placehold.co/600x400/png'}');"></div>
@@ -296,45 +159,26 @@ function renderWorkers(workers) {
   `).join('');
 }
 
-// -----------------------------------------------------------------------------
-// JOBS
-// -----------------------------------------------------------------------------
 async function loadJobs() {
-  try {
-    const jobs = await api('/jobs');
-    renderJobs(jobs);
-  } catch (err) {
-    console.error(err);
-  }
+  try { const jobs = await api('/jobs'); renderJobs(jobs); } catch (err) { console.error(err); }
 }
 
 async function postJob() {
-  if (!token) {
-    showNotification("Please login to post a job.", 'error');
-    return;
-  }
-
+  if (!token) return showNotification("Please login to post a job.", 'error');
   const title = document.getElementById('job-title').value;
   const company = document.getElementById('company').value;
   const description = document.getElementById('job-desc').value;
-
   try {
-    await api('/jobs', {
-      method: 'POST',
-      body: JSON.stringify({ title, company, description })
-    });
+    await api('/jobs', { method: 'POST', body: JSON.stringify({ title, company, description }) });
     showNotification("Job posted successfully!");
     document.getElementById('job-form').reset();
-    loadJobs(); // Refresh list
-  } catch (err) {
-    showNotification(err.message, 'error');
-  }
+    loadJobs();
+  } catch (err) { showNotification(err.message, 'error'); }
 }
 
 function renderJobs(jobs) {
   const grid = document.getElementById('job-grid');
   if (!grid) return;
-
   grid.innerHTML = jobs.map(job => `
     <div class="card">
       <div class="card-content">
@@ -347,37 +191,22 @@ function renderJobs(jobs) {
   `).join('');
 }
 
-// -----------------------------------------------------------------------------
-// AI AGENT
-// -----------------------------------------------------------------------------
 function toggleAIChat() {
   const win = document.getElementById('ai-chat-window');
-  if (win.style.display === 'flex') {
-    win.style.display = 'none';
-  } else {
-    win.style.display = 'flex';
-    document.getElementById('ai-chat-input').focus();
-  }
+  win.style.display = win.style.display === 'flex' ? 'none' : 'flex';
+  if (win.style.display === 'flex') document.getElementById('ai-chat-input').focus();
 }
 
 async function sendAIMessage() {
   const input = document.getElementById('ai-chat-input');
   const msg = input.value.trim();
   if (!msg) return;
-
-  // Add user message
   addChatMessage(msg, 'user');
   input.value = '';
-
   try {
-    const data = await api('/ai/chat', {
-      method: 'POST',
-      body: JSON.stringify({ message: msg })
-    });
+    const data = await api('/ai/chat', { method: 'POST', body: JSON.stringify({ message: msg }) });
     addChatMessage(data.response, 'bot');
-  } catch (err) {
-    addChatMessage("Sorry, I'm having trouble connecting right now.", 'bot');
-  }
+  } catch (err) { addChatMessage("Sorry, I'm having trouble connecting right now.", 'bot'); }
 }
 
 function addChatMessage(text, sender) {
@@ -389,15 +218,10 @@ function addChatMessage(text, sender) {
   container.scrollTop = container.scrollHeight;
 }
 
-// -----------------------------------------------------------------------------
-// INITIALIZATION
-// -----------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
   checkAuth();
-  searchWorkers(); // Load initial workers
-  loadJobs();      // Load initial jobs
-  
-  // Theme Toggle Logic
+  searchWorkers();
+  loadJobs();
   const themeToggle = document.getElementById('theme-toggle');
   if(themeToggle) {
     themeToggle.addEventListener('click', () => {
@@ -408,17 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
       themeToggle.innerHTML = next === 'light' ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
     });
   }
-
-  // AI Toggle Logic
   const aiToggle = document.getElementById('ai-toggle');
-  if(aiToggle) {
-    aiToggle.addEventListener('click', toggleAIChat);
-  }
-
-  // Close modals on outside click
-  window.onclick = function(event) {
-    if (event.target.classList.contains('modal')) {
-      event.target.style.display = "none";
-    }
-  };
+  if(aiToggle) aiToggle.addEventListener('click', toggleAIChat);
+  window.onclick = (e) => { if (e.target.classList.contains('modal')) e.target.style.display = "none"; };
 });
