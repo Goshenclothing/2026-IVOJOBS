@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-N309KJ1M2E"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-N309KJ1M2E');
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IVO - Professional Network & Job Board</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/glass-animation.css">
+</head>
+<body data-theme="light">
+    <!-- Liquid Glass Animation Background -->
+    <div class="liquid-bg-container">
+        <div class="liquid-blob blob-1"></div>
+        <div class="liquid-blob blob-2"></div>
+        <div class="liquid-blob blob-3"></div>
+    </div>
+    <button class="theme-toggle" id="theme-toggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
+    <header class="glass-panel">
+        <h1>IVO</h1>
+        <p>Connect with Top Talent • Build Your Dream Team</p>
+        <div id="auth-controls" style="position:absolute;top:20px;right:20px;">
+            <button onclick="openModal('login-modal')" class="auth-btn">Login</button>
+            <button onclick="openModal('signup-modal')" class="auth-btn signup">Sign Up</button>
+        </div>
+        <div id="profile-controls" style="position:absolute;top:20px;right:20px;display:none;">
+            <button onclick="showProfileDashboard()" class="auth-btn signup"><i class="fas fa-user-circle"></i> Profile</button>
+            <button onclick="logout()" class="auth-btn">Logout</button>
+        </div>
+    </header>
+
+    <nav>
+        <a href="#workers" onclick="smoothScroll('#workers')" class="glass-panel">Find Talent</a>
+        <a href="#job-form" onclick="smoothScroll('#job-form')" class="glass-panel">Post Jobs</a>
+        <a href="#about" onclick="smoothScroll('#about')" class="glass-panel">About IVO</a>
+    </nav>
+    <div class="container">
+        <section id="workers" class="section">
+            <h2>Search Professionals</h2>
+            <div class="search-bar glass-panel">
+                <input type="text" id="search-input" placeholder="Search by name, skill, or company." onkeyup="searchWorkers()" style="background: transparent;">
+                <button type="button" onclick="searchWorkers()">Search</button>
+            </div>
+            <div id="user-grid" class="user-grid">
+                <!-- User cards will be loaded here -->
+            </div>
+        </section>
+
+        <section id="job-board" class="section">
+            <h2>Latest Job Openings</h2>
+            <div id="job-grid" class="job-grid">
+                <!-- Job cards will be loaded here -->
+            </div>
+        </section>
+
+        <section id="post-job" class="section">
+            <h2>Post a New Job</h2>
+            <form id="job-form" class="glass-panel" onsubmit="event.preventDefault(); postJob();">
+                <input type="text" id="job-title" placeholder="Job Title (e.g., Senior React Developer)" required>
+                <input type="text" id="company" placeholder="Company Name" required>
+                <textarea id="job-desc" placeholder="Job Description & Requirements" rows="4" required></textarea>
+                <button type="submit">Post Job Vacancy</button>
+            </form>
+        </section>
+
+        <section id="about" class="section">
+            <h2>About IVO</h2>
+            <div class="about-content glass-panel">
+                <p>IVO is more than just a job board. It's a professional ecosystem designed for the modern era. We leverage glassmorphism design principles to provide a clear, focused, and beautiful interface for talent discovery and career growth.</p>
+                <p>Our mission is to bridge the gap between world-class professionals and the companies that need them, using AI-assisted matching and a community-first approach.</p>
+            </div>
+        </section>
+    </div>
+
+    <!-- AI AGENT TOGGLE -->
+    <button id="ai-toggle" title="Chat with IVO AI"><i class="fas fa-robot"></i></button>
+
+    <!-- AI CHAT WINDOW -->
+    <div id="ai-chat-window" class="glass-panel">
+        <div id="ai-chat-header">
+            <span><i class="fas fa-robot"></i> IVO Assistant</span>
+            <button onclick="toggleAIChat()" style="background:none;border:none;color:#fff;cursor:pointer;"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="ai-chat-messages">
+            <div class="ai-message bot">Hello! I'm your IVO Assistant. How can I help you today?</div>
+        </div>
+        <div id="ai-chat-input-area">
+            <input type="text" id="ai-chat-input" placeholder="Ask me anything..." onkeypress="if(event.key==='Enter') sendAIMessage()">
+            <button id="ai-chat-send" onclick="sendAIMessage()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <button id="back-to-top" title="Back to Top"><i class="fas fa-arrow-up"></i></button>
+
+    <footer class="footer">
+        <div class="social-links-footer">
+            <a href="#"><i class="fab fa-linkedin"></i></a>
+            <a href="#"><i class="fab fa-github"></i></a>
+            <a href="#"><i class="fab fa-twitter"></i></a>
+        </div>
+        <p>&copy; 2026 IVO Professional Network. All rights reserved.</p>
+    </footer>
+
+    <!-- AUTH MODALS -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content glass-panel">
+            <span class="close" onclick="closeModal('login-modal')">&times;</span>
+            <h2>Welcome Back</h2>
+            <input type="email" id="login-email" placeholder="Email Address" required>
+            <input type="password" id="login-password" placeholder="Password" required>
+            <button onclick="handleLogin()">Login</button>
+            <p class="switch">Don't have an account? <a href="#" onclick="switchModal('login-modal', 'signup-modal')">Sign Up</a></p>
+        </div>
+    </div>
+
+    <div id="signup-modal" class="modal">
+        <div class="modal-content glass-panel">
+            <span class="close" onclick="closeModal('signup-modal')">&times;</span>
+            <h2>Join IVO</h2>
+            <input type="text" id="signup-name" placeholder="Full Name" required>
+            <input type="email" id="signup-email" placeholder="Email Address" required>
+            <input type="text" id="signup-number" placeholder="Phone Number" required>
+            <input type="password" id="signup-password" placeholder="Create Password" required>
+            <input type="password" id="signup-confirm-password" placeholder="Confirm Password" required>
+            <button onclick="signup()">Create Account</button>
+            <p class="switch">Already have an account? <a href="#" onclick="switchModal('signup-modal', 'login-modal')">Login</a></p>
+        </div>
+    </div>
+
+    <!-- PROFILE MODALS -->
+    <div id="profile-modal" class="modal">
+        <div class="modal-content glass-panel">
+            <span class="close" onclick="closeModal('profile-modal')">&times;</span>
+            <div id="profile-details">
+                <h2 id="profile-name">User Name</h2>
+                <p id="profile-title">Professional Title</p>
+                <p id="profile-company">Current Company</p>
+                <p id="profile-skills">Skills: ...</p>
+                <button class="auth-btn signup" style="width:100%; margin-top:20px;">Connect</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MY PROFILE DASHBOARD -->
+    <div id="my-profile-modal" class="modal">
+        <div class="modal-content glass-panel">
+            <span class="close" onclick="closeModal('my-profile-modal')">&times;</span>
+            
+            <div class="profile-header-card">
+                <div class="profile-cover-photo"></div>
+                <img id="my-profile-avatar" src="" alt="Avatar" class="profile-avatar">
+                <div class="profile-intro-details">
+                    <h1 id="my-profile-name">Loading...</h1>
+                    <p id="my-profile-headline" style="font-weight: 600; color: var(--primary-blue);"></p>
+                    <p id="my-profile-location" class="location"><i class="fas fa-map-marker-alt"></i> </p>
+                    <p id="my-profile-contact" style="font-size: 0.9rem; color: var(--text-muted);"></p>
+                    
+                    <div class="social-links-profile">
+                        <a href="#"><i class="fab fa-linkedin"></i></a>
+                        <a href="#"><i class="fab fa-github"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                    </div>
+                    
+                    <button class="edit-profile-btn" onclick="openEditModal()">
+                        <i class="fas fa-edit"></i> Edit Profile
+                    </button>
+                </div>
+            </div>
+
+            <div id="profile-scroll-area">
+                <div class="profile-section-card">
+                    <h3>About</h3>
+                    <p id="my-profile-about"></p>
+                </div>
+
+                <div class="profile-section-card">
+                    <h3>Skills</h3>
+                    <div id="my-profile-skills" class="skill-tags">
+                        <!-- Skills will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT PROFILE MODAL -->
+    <div id="edit-profile-modal" class="modal">
+        <div class="modal-content glass-panel" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+            <span class="close" onclick="closeModal('edit-profile-modal')">&times;</span>
+            <h2>Edit Professional Profile</h2>
+            
+            <div style="text-align: left; margin-bottom: 15px;">
+                <label>Profile Picture</label>
+                <input type="file" id="edit-avatar" accept="image/*">
+            </div>
+
+            <input type="text" id="edit-name" placeholder="Full Name">
+            <input type="text" id="edit-headline" placeholder="Headline (e.g. Senior Software Engineer)">
+            <input type="text" id="edit-location" placeholder="Location">
+            <input type="text" id="edit-contact" placeholder="Public Email/Contact">
+            <textarea id="edit-about" placeholder="About Me" rows="4" style="width:100%; padding:10px; border-radius:8px; background:var(--input-bg); color:var(--text-dark); border:1px solid #ddd;"></textarea>
+            
+            <button onclick="saveProfileChanges()" style="margin-top: 20px;">Save Changes</button>
+        </div>
+    </div>
+
+    <script src="assets/js/app.js"></script>
+</body>
+</html>
